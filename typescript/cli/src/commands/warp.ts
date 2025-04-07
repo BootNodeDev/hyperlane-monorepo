@@ -407,6 +407,7 @@ export const rebalancer: CommandModuleWithContext<{}> = {
   handler: async () => {
     logCommandHeader('Hyperlane Warp Rebalancer');
     logGreen('ok');
+    process.exit(0);
   },
 };
 
