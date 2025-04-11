@@ -2,6 +2,7 @@ import { Wallet } from 'ethers';
 
 import { createWarpRouteConfigId } from '@hyperlane-xyz/registry';
 import { TokenType, WarpRouteDeployConfig } from '@hyperlane-xyz/sdk';
+import { toWei } from '@hyperlane-xyz/utils';
 
 import { writeYamlOrJson } from '../../utils/files.js';
 import {
@@ -18,6 +19,7 @@ import {
 import {
   hyperlaneWarpDeploy,
   hyperlaneWarpRebalancer,
+  hyperlaneWarpSendRelay,
 } from '../commands/warp.js';
 
 describe('hyperlane warp rebalancer e2e tests', async function () {
@@ -76,6 +78,22 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       writeYamlOrJson(warpDeploymentPath, warpConfig);
       await hyperlaneWarpDeploy(warpDeploymentPath);
 
+      // Bridge tokens from the collateral chains to the synthetic
+      await hyperlaneWarpSendRelay(
+        CHAIN_NAME_2,
+        CHAIN_NAME_4,
+        warpDeploymentPath,
+        true,
+        toWei(49),
+      );
+      await hyperlaneWarpSendRelay(
+        CHAIN_NAME_3,
+        CHAIN_NAME_4,
+        warpDeploymentPath,
+        true,
+        toWei(51),
+      );
+
       // Start the rebalancer
       const warpRouteId = createWarpRouteConfigId(tokenSymbol.toUpperCase(), [
         CHAIN_NAME_2,
@@ -84,14 +102,14 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       ]);
       const process = hyperlaneWarpRebalancer(warpRouteId, 1000);
 
-      // Verify that one of the logs corresponds to the collateral.
+      // Verify that it logs the correct collateral
       for await (const chunk of process.stdout) {
         if (
           chunk.includes(`┌─────────┬──────────┬────────────┬─────────┐
 │ (index) │ name     │ collateral │ symbol  │
 ├─────────┼──────────┼────────────┼─────────┤
-│ 0       │ 'anvil2' │ 0          │ 'TOKEN' │
-│ 1       │ 'anvil3' │ 0          │ 'TOKEN' │
+│ 0       │ 'anvil2' │ 49         │ 'TOKEN' │
+│ 1       │ 'anvil3' │ 51         │ 'TOKEN' │
 └─────────┴──────────┴────────────┴─────────┘
 `)
         ) {
