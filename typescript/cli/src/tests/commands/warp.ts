@@ -142,7 +142,7 @@ export function hyperlaneWarpSendRelay(
   destination: string,
   warpCorePath: string,
   relay = true,
-  value = 1,
+  value: number | string = 1,
 ): ProcessPromise {
   return $`yarn workspace @hyperlane-xyz/cli run hyperlane warp send \
         ${relay ? '--relay' : ''} \
