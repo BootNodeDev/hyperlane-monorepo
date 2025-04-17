@@ -1,8 +1,7 @@
 import EventEmitter from 'events';
 
 import { IRegistry } from '@hyperlane-xyz/registry';
-import { MultiProtocolProvider } from '@hyperlane-xyz/sdk';
-import { WarpCore } from '@hyperlane-xyz/sdk';
+import { MultiProtocolProvider, WarpCore } from '@hyperlane-xyz/sdk';
 import { objMap, objMerge } from '@hyperlane-xyz/utils';
 
 import { IMonitor, MonitorEvent } from '../interfaces/IMonitor.js';
