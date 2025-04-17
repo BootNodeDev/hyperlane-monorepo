@@ -23,15 +23,6 @@ env:
   RUSTC_WRAPPER: sccache
 
 jobs:
-  debug-job:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Debug Info
-        run: |
-          echo "Event name: ${{ github.event_name }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Repository: ${{ github.repository }}"
-
   yarn-install:
     runs-on: ubuntu-latest
     steps:
