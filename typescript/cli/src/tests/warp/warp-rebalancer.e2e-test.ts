@@ -121,7 +121,7 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
     }
   ]`)
         ) {
-          process.kill();
+          await process.kill();
           break;
         }
       }
