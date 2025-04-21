@@ -1,17 +1,17 @@
 import { ChainName } from '@hyperlane-xyz/sdk';
 
-export type Route = {
-  fromChain: ChainName;
-  toChain: ChainName;
-  amount: bigint;
-};
+import {
+  IStrategy,
+  RawBalances,
+  RebalancingRoute,
+} from '../interfaces/IStrategy.js';
 
-export class Strategy {
+export class Strategy implements IStrategy {
   /**
    * Get the optimized routes that will rebalance all chains to the same balance
    */
-  getRebalancingRoutes(balances: Record<ChainName, bigint>): Route[] {
-    const entries = Object.entries(balances);
+  getRebalancingRoutes(rawBalances: RawBalances): RebalancingRoute[] {
+    const entries = Object.entries(rawBalances);
     // Get the total balance from all chains
     const total = entries.reduce((sum, [, balance]) => sum + balance, 0n);
     // Get the average balance
@@ -30,7 +30,7 @@ export class Strategy {
       }
     }
 
-    const routes: Route[] = [];
+    const routes: RebalancingRoute[] = [];
 
     // Keep iterating until all routes have been found
     while (surpluss.length > 0 && deficits.length > 0) {
