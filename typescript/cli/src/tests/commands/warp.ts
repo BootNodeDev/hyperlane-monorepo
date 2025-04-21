@@ -169,7 +169,7 @@ export function hyperlaneWarpRebalancer(
         --checkFrequency ${checkFrequency} \
         ${
           options.strategyTolerance
-            ? ['--strategyTolerance', options.strategyTolerance]
+            ? `--strategyTolerance ${options.strategyTolerance}`
             : ''
         }`;
 }
