@@ -246,7 +246,7 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
     });
 
     describe('with strategy tolerance of 10 ether', () => {
-      it.only('should report an empty array of routes being executed', async () => {
+      it('should report an empty array of routes being executed', async () => {
         process = hyperlaneWarpRebalancer(warpRouteId, CHECK_FREQUENCY, {
           strategyTolerance: BigInt(toWei(10)),
         });
