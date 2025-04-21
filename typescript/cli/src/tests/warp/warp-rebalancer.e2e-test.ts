@@ -3,20 +3,29 @@ import { ProcessPromise } from 'zx';
 import { $ } from 'zx';
 
 import { createWarpRouteConfigId } from '@hyperlane-xyz/registry';
-import { TokenType, WarpRouteDeployConfig } from '@hyperlane-xyz/sdk';
-import { assert, toWei } from '@hyperlane-xyz/utils';
+import {
+  ChainMetadata,
+  TokenType,
+  WarpRouteDeployConfig,
+} from '@hyperlane-xyz/sdk';
+import { toWei } from '@hyperlane-xyz/utils';
 
-import { writeYamlOrJson } from '../../utils/files.js';
+import { readYamlOrJson, writeYamlOrJson } from '../../utils/files.js';
 import {
   ANVIL_KEY,
+  CHAIN_2_METADATA_PATH,
+  CHAIN_3_METADATA_PATH,
+  CHAIN_4_METADATA_PATH,
   CHAIN_NAME_2,
   CHAIN_NAME_3,
   CHAIN_NAME_4,
   CORE_CONFIG_PATH,
   DEFAULT_E2E_TEST_TIMEOUT,
+  createSnapshot,
   deployOrUseExistingCore,
   deployToken,
   getCombinedWarpRoutePath,
+  restoreSnapshot,
 } from '../commands/helpers.js';
 import {
   hyperlaneWarpDeploy,
@@ -34,43 +43,8 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   let warpRouteId: string;
 
   let process: ProcessPromise | undefined;
-  let snapshot1: string;
-  let snapshot2: string;
-  let snapshot3: string;
 
-  async function createSnapshot(rpcUrl: string): Promise<string> {
-    const response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: 1337,
-        jsonrpc: '2.0',
-        method: 'evm_snapshot',
-        params: [],
-      }),
-    });
-    const data = await response.json();
-    return data.result;
-  }
-
-  async function restoreSnapshot(rpcUrl: string, snapshot: string) {
-    const response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: 1337,
-        jsonrpc: '2.0',
-        method: 'evm_revert',
-        params: [snapshot],
-      }),
-    });
-    const data = await response.json();
-    assert(data.result, 'Failed to revert snapshot');
-  }
+  let snapshots: { rpcUrl: string; snapshotId: string }[] = [];
 
   before(async () => {
     const ogVerbose = $.verbose;
@@ -132,9 +106,28 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   beforeEach(async () => {
     process = undefined;
 
-    snapshot1 = await createSnapshot('http://localhost:8555');
-    snapshot2 = await createSnapshot('http://localhost:8600');
-    snapshot3 = await createSnapshot('http://localhost:8601');
+    const chain2Metadata: ChainMetadata = readYamlOrJson(CHAIN_2_METADATA_PATH);
+    const chain3Metadata: ChainMetadata = readYamlOrJson(CHAIN_3_METADATA_PATH);
+    const chain4Metadata: ChainMetadata = readYamlOrJson(CHAIN_4_METADATA_PATH);
+
+    const chain2RpcUrl = chain2Metadata.rpcUrls[0].http;
+    const chain3RpcUrl = chain3Metadata.rpcUrls[0].http;
+    const chain4RpcUrl = chain4Metadata.rpcUrls[0].http;
+
+    snapshots = [
+      {
+        rpcUrl: chain2RpcUrl,
+        snapshotId: await createSnapshot(chain2RpcUrl),
+      },
+      {
+        rpcUrl: chain3RpcUrl,
+        snapshotId: await createSnapshot(chain3RpcUrl),
+      },
+      {
+        rpcUrl: chain4RpcUrl,
+        snapshotId: await createSnapshot(chain4RpcUrl),
+      },
+    ];
   });
 
   afterEach(async () => {
@@ -142,9 +135,11 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       await process.kill();
     }
 
-    await restoreSnapshot('http://localhost:8555', snapshot1);
-    await restoreSnapshot('http://localhost:8600', snapshot2);
-    await restoreSnapshot('http://localhost:8601', snapshot3);
+    await Promise.all(
+      snapshots.map(({ rpcUrl, snapshotId }) =>
+        restoreSnapshot(rpcUrl, snapshotId),
+      ),
+    );
   });
 
   it('should successfuly start the rebalancer', async () => {
