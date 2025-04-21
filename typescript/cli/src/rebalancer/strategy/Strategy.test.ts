@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 
 import { ChainName } from '@hyperlane-xyz/sdk';
 
-import { Strategy } from './Strategy.js';
+import { Route, Strategy } from './Strategy.js';
 
 describe('Strategy', () => {
   let chain1: ChainName;
@@ -45,7 +45,7 @@ describe('Strategy', () => {
         fromChain: 'chain3',
         toChain: 'chain1',
         amount: ethers.utils.parseEther('100').toBigInt(),
-      });
+      } as Route);
     });
   });
 
@@ -66,12 +66,12 @@ describe('Strategy', () => {
         fromChain: 'chain3',
         toChain: 'chain1',
         amount: 66666666666666666666n, // 66
-      });
+      } as Route);
       expect(routes[1]).to.deep.equal({
         fromChain: 'chain3',
         toChain: 'chain2',
         amount: 66666666666666666666n, // 66
-      });
+      } as Route);
     });
   });
 
