@@ -211,14 +211,14 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
           CHAIN_NAME_4,
           warpDeploymentPath,
           true,
-          toWei(30),
+          toWei(40),
         ),
         hyperlaneWarpSendRelay(
           CHAIN_NAME_3,
           CHAIN_NAME_4,
           warpDeploymentPath,
           true,
-          toWei(70),
+          toWei(60),
         ),
       ]);
 
@@ -235,7 +235,7 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   {
     fromChain: 'anvil3',
     toChain: 'anvil2',
-    amount: 20000000000000000000n
+    amount: 10000000000000000000n
   }
 ]`,
           )
@@ -243,6 +243,20 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
           break;
         }
       }
+    });
+
+    describe('with strategy tolerance of 10 ether', () => {
+      it.only('should report an empty array of routes being executed', async () => {
+        process = hyperlaneWarpRebalancer(warpRouteId, CHECK_FREQUENCY, {
+          strategyTolerance: BigInt(toWei(10)),
+        });
+
+        for await (const chunk of process.stdout) {
+          if (chunk.includes('Executing rebalancing routes: []')) {
+            break;
+          }
+        }
+      });
     });
   });
 });
