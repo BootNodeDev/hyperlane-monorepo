@@ -28,25 +28,18 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   describe('hyperlane warp rebalancer', () => {
     it('should successfully start and stop the warp rebalancer', async function () {
       // Deploy core contracts on all chains
-      const chain2Addresses = await deployOrUseExistingCore(
-        CHAIN_NAME_2,
-        CORE_CONFIG_PATH,
-        ANVIL_KEY,
-      );
-      const chain3Addresses = await deployOrUseExistingCore(
-        CHAIN_NAME_3,
-        CORE_CONFIG_PATH,
-        ANVIL_KEY,
-      );
-      const chain4Addresses = await deployOrUseExistingCore(
-        CHAIN_NAME_4,
-        CORE_CONFIG_PATH,
-        ANVIL_KEY,
-      );
+      const [chain2Addresses, chain3Addresses, chain4Addresses] =
+        await Promise.all([
+          deployOrUseExistingCore(CHAIN_NAME_2, CORE_CONFIG_PATH, ANVIL_KEY),
+          deployOrUseExistingCore(CHAIN_NAME_3, CORE_CONFIG_PATH, ANVIL_KEY),
+          deployOrUseExistingCore(CHAIN_NAME_4, CORE_CONFIG_PATH, ANVIL_KEY),
+        ]);
 
       // Deploy ERC20s
-      const tokenChain2 = await deployToken(ANVIL_KEY, CHAIN_NAME_2);
-      const tokenChain3 = await deployToken(ANVIL_KEY, CHAIN_NAME_3);
+      const [tokenChain2, tokenChain3] = await Promise.all([
+        deployToken(ANVIL_KEY, CHAIN_NAME_2),
+        deployToken(ANVIL_KEY, CHAIN_NAME_3),
+      ]);
       const tokenSymbol = await tokenChain2.symbol();
 
       // Deploy Warp Route
@@ -79,20 +72,22 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       await hyperlaneWarpDeploy(warpDeploymentPath);
 
       // Bridge tokens from the collateral chains to the synthetic
-      await hyperlaneWarpSendRelay(
-        CHAIN_NAME_2,
-        CHAIN_NAME_4,
-        warpDeploymentPath,
-        true,
-        toWei(49),
-      );
-      await hyperlaneWarpSendRelay(
-        CHAIN_NAME_3,
-        CHAIN_NAME_4,
-        warpDeploymentPath,
-        true,
-        toWei(51),
-      );
+      await Promise.all([
+        hyperlaneWarpSendRelay(
+          CHAIN_NAME_2,
+          CHAIN_NAME_4,
+          warpDeploymentPath,
+          true,
+          toWei(49),
+        ),
+        hyperlaneWarpSendRelay(
+          CHAIN_NAME_3,
+          CHAIN_NAME_4,
+          warpDeploymentPath,
+          true,
+          toWei(51),
+        ),
+      ]);
 
       // Start the rebalancer
       const warpRouteId = createWarpRouteConfigId(tokenSymbol.toUpperCase(), [
