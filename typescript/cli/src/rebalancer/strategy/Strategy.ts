@@ -7,14 +7,19 @@ export type Route = {
 };
 
 export class Strategy {
+  /**
+   * Get the optimized routes that will rebalance all chains to the same balance
+   */
   getRebalancingRoutes(balances: Record<ChainName, bigint>): Route[] {
     const entries = Object.entries(balances);
+    // Get the total balance from all chains
     const total = entries.reduce((sum, [, balance]) => sum + balance, 0n);
+    // Get the average balance
     const target = total / BigInt(entries.length);
-
     const surpluss: { chain: ChainName; amount: bigint }[] = [];
     const deficits: { chain: ChainName; amount: bigint }[] = [];
 
+    // Group balances by balances with surplus or deficit
     for (const [chain, balance] of entries) {
       if (balance < target) {
         deficits.push({ chain, amount: target - balance });
@@ -27,6 +32,7 @@ export class Strategy {
 
     const routes: Route[] = [];
 
+    // Keep iterating until all routes have been found
     while (surpluss.length > 0 && deficits.length > 0) {
       const surplus = surpluss[0];
       const deficit = deficits[0];
@@ -41,7 +47,6 @@ export class Strategy {
         });
 
         deficits.shift();
-
         surplus.amount -= deficit.amount;
       } else if (surplus.amount < deficit.amount) {
         routes.push({
@@ -51,7 +56,6 @@ export class Strategy {
         });
 
         surpluss.shift();
-
         deficit.amount -= surplus.amount;
       } else {
         routes.push({
