@@ -64,15 +64,7 @@ export class Strategy implements IStrategy {
   getRebalancingRoutes(rawBalances: RawBalances): RebalancingRoute[] {
     const entries = Object.entries(rawBalances);
 
-    for (const [chain, balance] of entries) {
-      if (!this.config[chain]) {
-        throw new Error(`Chain ${chain} not found in configuration`);
-      }
-
-      if (balance < 0n) {
-        throw new Error(`Balance ${balance} is negative`);
-      }
-    }
+    this.validateRawBalances(rawBalances);
 
     // Get the total balance from all chains
     const total = entries.reduce((sum, [, balance]) => sum + balance, 0n);
@@ -150,5 +142,26 @@ export class Strategy implements IStrategy {
     }
 
     return routes;
+  }
+
+  private validateRawBalances(rawBalances: RawBalances): void {
+    const configChains = Object.keys(this.config);
+    const rawBalancesChains = Object.keys(rawBalances);
+
+    if (configChains.length !== rawBalancesChains.length) {
+      throw new Error('Config chains do not match raw balances chains length');
+    }
+
+    for (const chain of configChains) {
+      const balance: bigint | undefined = rawBalances[chain];
+
+      if (balance === undefined) {
+        throw new Error(`Raw balance for chain ${chain} not found`);
+      }
+
+      if (balance < 0n) {
+        throw new Error(`Raw balance for chain ${chain} is negative`);
+      }
+    }
   }
 }
