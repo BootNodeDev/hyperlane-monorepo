@@ -3,7 +3,7 @@ import { ChainName } from '@hyperlane-xyz/sdk';
 /**
  * Per chain configuration for the strategy
  */
-export type Config = Record<
+export type StrategyConfig = Record<
   ChainName,
   {
     /**

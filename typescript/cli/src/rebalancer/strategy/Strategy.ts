@@ -6,14 +6,40 @@ import {
   RebalancingRoute,
 } from '../interfaces/IStrategy.js';
 
-import { Config, Delta } from './types.js';
+import { Delta, StrategyConfig } from './types.js';
 
 export class Strategy implements IStrategy {
   private readonly chains: ChainName[];
+  private readonly config: StrategyConfig;
+  private readonly totalWeight: bigint;
 
-  constructor(private readonly config: Config) {
-    this.chains = Object.keys(this.config);
-    this.validateConfig();
+  constructor(config: StrategyConfig) {
+    const chains = Object.keys(config);
+
+    // Rebalancing makes sense only with more than one chain.
+    if (chains.length < 2) {
+      throw new Error('At least two chains must be configured');
+    }
+
+    let totalWeight = 0n;
+
+    for (const chain of chains) {
+      const { weight, tolerance } = config[chain];
+
+      if (weight <= 0n) {
+        throw new Error('Weight must be greater than 0');
+      }
+
+      if (tolerance < 0n || tolerance > 100n) {
+        throw new Error('Tolerance must be between 0 and 100');
+      }
+
+      totalWeight += weight;
+    }
+
+    this.chains = chains;
+    this.config = config;
+    this.totalWeight = totalWeight;
   }
 
   /**
@@ -32,7 +58,7 @@ export class Strategy implements IStrategy {
     const { surpluss, deficits } = this.chains.reduce(
       (acc, chain) => {
         const { weight, tolerance } = this.config[chain];
-        const target = (total * weight) / 100n;
+        const target = (total * weight) / this.totalWeight;
         const toleranceAmount = (target * tolerance) / 100n;
         const balance = rawBalances[chain];
 
@@ -93,33 +119,6 @@ export class Strategy implements IStrategy {
     }
 
     return routes;
-  }
-
-  private validateConfig(): void {
-    // Rebalancing makes sense only with more than one chain.
-    if (this.chains.length < 2) {
-      throw new Error('At least two chains must be configured');
-    }
-
-    let totalWeight = 0n;
-
-    for (const chain of this.chains) {
-      const { weight, tolerance } = this.config[chain];
-
-      if (weight < 0n || weight > 100n) {
-        throw new Error('Weight must be between 0 and 100');
-      }
-
-      if (tolerance < 0n || tolerance > 100n) {
-        throw new Error('Tolerance must be between 0 and 100');
-      }
-
-      totalWeight += weight;
-    }
-
-    if (totalWeight !== 100n) {
-      throw new Error('Weights must add up to 100');
-    }
   }
 
   private validateRawBalances(rawBalances: RawBalances): void {

@@ -25,7 +25,11 @@ describe('Strategy', () => {
       [chain3]: ethers.utils.parseEther('300').toBigInt(),
     };
 
-    strategy = new Strategy();
+    strategy = new Strategy({
+      [chain1]: { weight: 100n, tolerance: 0n },
+      [chain2]: { weight: 100n, tolerance: 0n },
+      [chain3]: { weight: 100n, tolerance: 0n },
+    });
   });
 
   describe('when balances for chain1, chain2, and chain3 are 100, 200, and 300 respectively', () => {
@@ -91,16 +95,20 @@ describe('Strategy', () => {
     });
   });
 
-  describe('when tolerance is 10 ether', () => {
+  describe('when tolerance for each chain is 10%', () => {
     beforeEach(() => {
-      strategy = new Strategy(ethers.utils.parseEther('10').toBigInt());
+      strategy = new Strategy({
+        [chain1]: { weight: 100n, tolerance: 10n },
+        [chain2]: { weight: 100n, tolerance: 10n },
+        [chain3]: { weight: 100n, tolerance: 10n },
+      });
     });
 
-    describe('when balances for chain1, chain2, and chain3 are 80, 90, and 100 respectively', () => {
+    describe('when balances for chain1, chain2, and chain3 are 90, 95, and 100 respectively', () => {
       beforeEach(() => {
         balances = {
-          [chain1]: ethers.utils.parseEther('80').toBigInt(),
-          [chain2]: ethers.utils.parseEther('90').toBigInt(),
+          [chain1]: ethers.utils.parseEther('90').toBigInt(),
+          [chain2]: ethers.utils.parseEther('95').toBigInt(),
           [chain3]: ethers.utils.parseEther('100').toBigInt(),
         };
       });
@@ -112,40 +120,24 @@ describe('Strategy', () => {
       });
     });
 
-    describe('when balances for chain1, chain2, and chain3 are 70, 90, and 110 respectively', () => {
+    describe('when balances for chain1, chain2, and chain3 are 80, 90, and 100 respectively', () => {
       beforeEach(() => {
         balances = {
-          [chain1]: ethers.utils.parseEther('70').toBigInt(),
+          [chain1]: ethers.utils.parseEther('80').toBigInt(),
           [chain2]: ethers.utils.parseEther('90').toBigInt(),
-          [chain3]: ethers.utils.parseEther('110').toBigInt(),
+          [chain3]: ethers.utils.parseEther('100').toBigInt(),
         };
       });
 
-      it('should return one route for 20 from chain3 to chain1', () => {
+      it('should return one route for 10 from chain3 to chain1', () => {
         const routes = strategy.getRebalancingRoutes(balances);
 
         expect(routes).to.have.lengthOf(1);
         expect(routes[0]).to.deep.equal({
           fromChain: 'chain3',
           toChain: 'chain1',
-          amount: ethers.utils.parseEther('20').toBigInt(),
+          amount: ethers.utils.parseEther('10').toBigInt(),
         });
-      });
-    });
-
-    describe('when balances for chain1, chain2, and chain3 are lower than the tolerance', () => {
-      beforeEach(() => {
-        balances = {
-          [chain1]: ethers.utils.parseEther('9').toBigInt(),
-          [chain2]: ethers.utils.parseEther('9').toBigInt(),
-          [chain3]: ethers.utils.parseEther('9').toBigInt(),
-        };
-      });
-
-      it('should return no routes', () => {
-        const routes = strategy.getRebalancingRoutes(balances);
-
-        expect(routes).to.be.empty;
       });
     });
   });
