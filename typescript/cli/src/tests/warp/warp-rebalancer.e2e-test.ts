@@ -1,4 +1,5 @@
 import { Wallet } from 'ethers';
+import { rmSync } from 'fs';
 import { ProcessPromise } from 'zx';
 import { $ } from 'zx';
 
@@ -21,6 +22,7 @@ import {
   CHAIN_NAME_4,
   CORE_CONFIG_PATH,
   DEFAULT_E2E_TEST_TIMEOUT,
+  REBALANCER_STRATEGY_CONFIG_PATH,
   createSnapshot,
   deployOrUseExistingCore,
   deployToken,
@@ -104,6 +106,11 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   });
 
   beforeEach(async () => {
+    writeYamlOrJson(REBALANCER_STRATEGY_CONFIG_PATH, {
+      [CHAIN_NAME_2]: { weight: '100', tolerance: '0' },
+      [CHAIN_NAME_3]: { weight: '100', tolerance: '0' },
+    });
+
     process = undefined;
 
     const chain2Metadata: ChainMetadata = readYamlOrJson(CHAIN_2_METADATA_PATH);
@@ -131,6 +138,8 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   });
 
   afterEach(async () => {
+    rmSync(REBALANCER_STRATEGY_CONFIG_PATH);
+
     if (process) {
       await process.kill();
     }
@@ -143,7 +152,11 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   });
 
   it('should successfuly start the rebalancer', async () => {
-    process = hyperlaneWarpRebalancer(warpRouteId, CHECK_FREQUENCY);
+    process = hyperlaneWarpRebalancer(
+      warpRouteId,
+      CHECK_FREQUENCY,
+      REBALANCER_STRATEGY_CONFIG_PATH,
+    );
 
     for await (const chunk of process.stdout) {
       if (chunk.includes('Rebalancer started successfully 🚀')) {
@@ -154,7 +167,11 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
 
   describe('with no balance on collateral contracts', () => {
     it('should report an empty array of routes being executed', async () => {
-      process = hyperlaneWarpRebalancer(warpRouteId, CHECK_FREQUENCY);
+      process = hyperlaneWarpRebalancer(
+        warpRouteId,
+        CHECK_FREQUENCY,
+        REBALANCER_STRATEGY_CONFIG_PATH,
+      );
 
       for await (const chunk of process.stdout) {
         if (chunk.includes('Executing rebalancing routes: []')) {
@@ -192,7 +209,11 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
     });
 
     it('should report an empty array of routes being executed', async () => {
-      process = hyperlaneWarpRebalancer(warpRouteId, CHECK_FREQUENCY);
+      process = hyperlaneWarpRebalancer(
+        warpRouteId,
+        CHECK_FREQUENCY,
+        REBALANCER_STRATEGY_CONFIG_PATH,
+      );
 
       for await (const chunk of process.stdout) {
         if (chunk.includes('Executing rebalancing routes: []')) {
@@ -230,7 +251,11 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
     });
 
     it('should report an array of routes being executed', async () => {
-      process = hyperlaneWarpRebalancer(warpRouteId, CHECK_FREQUENCY);
+      process = hyperlaneWarpRebalancer(
+        warpRouteId,
+        CHECK_FREQUENCY,
+        REBALANCER_STRATEGY_CONFIG_PATH,
+      );
 
       for await (const chunk of process.stdout) {
         if (
@@ -249,11 +274,20 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       }
     });
 
-    describe('with strategy tolerance of 10 ether', () => {
-      it('should report an empty array of routes being executed', async () => {
-        process = hyperlaneWarpRebalancer(warpRouteId, CHECK_FREQUENCY, {
-          strategyTolerance: BigInt(toWei(10)),
+    describe('with chain tolerances set to 50%', () => {
+      beforeEach(async () => {
+        writeYamlOrJson(REBALANCER_STRATEGY_CONFIG_PATH, {
+          [CHAIN_NAME_2]: { weight: '100', tolerance: '50' },
+          [CHAIN_NAME_3]: { weight: '100', tolerance: '50' },
         });
+      });
+
+      it('should report an empty array of routes being executed', async () => {
+        process = hyperlaneWarpRebalancer(
+          warpRouteId,
+          CHECK_FREQUENCY,
+          REBALANCER_STRATEGY_CONFIG_PATH,
+        );
 
         for await (const chunk of process.stdout) {
           if (chunk.includes('Executing rebalancing routes: []')) {

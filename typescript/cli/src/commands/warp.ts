@@ -29,6 +29,7 @@ import {
   IStrategy,
   Monitor,
   Strategy,
+  StrategyConfig,
 } from '../rebalancer/index.js';
 import { sendTestTransfer } from '../send/transfer.js';
 import { runSingleChainSelectionStep } from '../utils/chains.js';
@@ -411,7 +412,7 @@ export const check: CommandModuleWithContext<{
 export const rebalancer: CommandModuleWithContext<{
   warpRouteId: string;
   checkFrequency: number;
-  strategyTolerance: string;
+  strategyConfigFile: string;
 }> = {
   command: 'rebalancer',
   describe: 'Run a warp route collateral rebalancer',
@@ -427,19 +428,18 @@ export const rebalancer: CommandModuleWithContext<{
       demandOption: true,
       alias: 'v',
     },
-    strategyTolerance: {
+    strategyConfigFile: {
       type: 'string',
-      description:
-        'Tolerance threshold for imbalance detection (specified in token base units; e.g., 1000000 for 1 USDC, 1000000000000000000 for 1 ETH)',
-      demandOption: false,
-      default: '0',
+      description: 'The path to a strategy configuration file (.json or .yaml)',
+      demandOption: true,
+      alias: 's',
     },
   },
   handler: async ({
     context,
     warpRouteId,
     checkFrequency,
-    strategyTolerance,
+    strategyConfigFile,
   }) => {
     logCommandHeader('Hyperlane Warp Rebalancer');
 
@@ -450,8 +450,18 @@ export const rebalancer: CommandModuleWithContext<{
       checkFrequency,
     );
 
+    // Load the strategy config from disk
+    const strategyConfig = readYamlOrJson<StrategyConfig>(strategyConfigFile);
+
+    // Convert tolerance and weight from strings to BigInt.
+    // This is necessary because bigints are not serializable so they would have been stored as strings
+    Object.values(strategyConfig).forEach((chainConfig) => {
+      chainConfig.tolerance = BigInt(chainConfig.tolerance);
+      chainConfig.weight = BigInt(chainConfig.weight);
+    });
+
     // Instantiates the strategy that will get rebalancing routes based on monitor results
-    const strategy: IStrategy = new Strategy(BigInt(strategyTolerance));
+    const strategy: IStrategy = new Strategy(strategyConfig);
 
     // Instantiates the executor that will process rebalancing routes
     const executor: IExecutor = new Executor();
