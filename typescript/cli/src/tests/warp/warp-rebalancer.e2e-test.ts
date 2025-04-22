@@ -8,7 +8,7 @@ import {
   TokenType,
   WarpRouteDeployConfig,
 } from '@hyperlane-xyz/sdk';
-import { toWei } from '@hyperlane-xyz/utils';
+import { sleep, toWei } from '@hyperlane-xyz/utils';
 
 import { readYamlOrJson, writeYamlOrJson } from '../../utils/files.js';
 import {
@@ -177,12 +177,14 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
           true,
           toWei(50),
         ),
-        hyperlaneWarpSendRelay(
-          CHAIN_NAME_3,
-          CHAIN_NAME_4,
-          warpDeploymentPath,
-          true,
-          toWei(50),
+        sleep(1000).then(() =>
+          hyperlaneWarpSendRelay(
+            CHAIN_NAME_3,
+            CHAIN_NAME_4,
+            warpDeploymentPath,
+            true,
+            toWei(50),
+          ),
         ),
       ]);
 
@@ -213,12 +215,14 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
           true,
           toWei(40),
         ),
-        hyperlaneWarpSendRelay(
-          CHAIN_NAME_3,
-          CHAIN_NAME_4,
-          warpDeploymentPath,
-          true,
-          toWei(60),
+        sleep(1000).then(() =>
+          hyperlaneWarpSendRelay(
+            CHAIN_NAME_3,
+            CHAIN_NAME_4,
+            warpDeploymentPath,
+            true,
+            toWei(60),
+          ),
         ),
       ]);
 
