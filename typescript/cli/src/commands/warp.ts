@@ -429,7 +429,8 @@ export const rebalancer: CommandModuleWithContext<{
     },
     strategyTolerance: {
       type: 'string',
-      description: 'Threshold for balance to be considered unbalanced',
+      description:
+        'Tolerance threshold for imbalance detection (specified in token base units; e.g., 1000000 for 1 USDC, 1000000000000000000 for 1 ETH)',
       demandOption: false,
       default: '0',
     },
