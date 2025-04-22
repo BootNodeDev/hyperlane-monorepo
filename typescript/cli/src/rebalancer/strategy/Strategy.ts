@@ -31,9 +31,17 @@ type Delta = { chain: ChainName; amount: bigint };
 
 export class Strategy implements IStrategy {
   constructor(private readonly config: Config) {
+    const chains = Object.keys(config);
+
+    if (chains.length < 2) {
+      throw new Error('At least two chains must be configured');
+    }
+
     let totalWeight = 0n;
 
-    for (const [, { weight, tolerance }] of Object.entries(config)) {
+    for (const chain of chains) {
+      const { weight, tolerance } = config[chain];
+
       if (weight > 100n || weight < 0n) {
         throw new Error('Weight must be between 0 and 100');
       }
