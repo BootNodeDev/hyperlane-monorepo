@@ -55,6 +55,17 @@ export class Strategy implements IStrategy {
    */
   getRebalancingRoutes(rawBalances: RawBalances): RebalancingRoute[] {
     const entries = Object.entries(rawBalances);
+
+    for (const [chain, balance] of entries) {
+      if (!this.config[chain]) {
+        throw new Error(`Chain ${chain} not found in configuration`);
+      }
+
+      if (balance < 0n) {
+        throw new Error(`Balance ${balance} is negative`);
+      }
+    }
+
     // Get the total balance from all chains
     const total = entries.reduce((sum, [, balance]) => sum + balance, 0n);
 
