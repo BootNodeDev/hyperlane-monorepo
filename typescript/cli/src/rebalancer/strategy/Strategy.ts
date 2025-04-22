@@ -31,31 +31,7 @@ type Delta = { chain: ChainName; amount: bigint };
 
 export class Strategy implements IStrategy {
   constructor(private readonly config: Config) {
-    const chains = Object.keys(config);
-
-    if (chains.length < 2) {
-      throw new Error('At least two chains must be configured');
-    }
-
-    let totalWeight = 0n;
-
-    for (const chain of chains) {
-      const { weight, tolerance } = config[chain];
-
-      if (weight > 100n || weight < 0n) {
-        throw new Error('Weight must be between 0 and 100');
-      }
-
-      if (tolerance > 100n || tolerance < 0n) {
-        throw new Error('Tolerance must be between 0 and 100');
-      }
-
-      totalWeight += weight;
-    }
-
-    if (totalWeight !== 100n) {
-      throw new Error('Weights must add up to 100');
-    }
+    this.validateConfig(config);
   }
 
   /**
@@ -142,6 +118,34 @@ export class Strategy implements IStrategy {
     }
 
     return routes;
+  }
+
+  private validateConfig(config: Config): void {
+    const chains = Object.keys(config);
+
+    if (chains.length < 2) {
+      throw new Error('At least two chains must be configured');
+    }
+
+    let totalWeight = 0n;
+
+    for (const chain of chains) {
+      const { weight, tolerance } = config[chain];
+
+      if (weight > 100n || weight < 0n) {
+        throw new Error('Weight must be between 0 and 100');
+      }
+
+      if (tolerance > 100n || tolerance < 0n) {
+        throw new Error('Tolerance must be between 0 and 100');
+      }
+
+      totalWeight += weight;
+    }
+
+    if (totalWeight !== 100n) {
+      throw new Error('Weights must add up to 100');
+    }
   }
 
   private validateRawBalances(rawBalances: RawBalances): void {
