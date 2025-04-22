@@ -62,9 +62,9 @@ export class Strategy implements IStrategy {
    * Get the optimized routes that will rebalance all chains to the same balance
    */
   getRebalancingRoutes(rawBalances: RawBalances): RebalancingRoute[] {
-    const entries = Object.entries(rawBalances);
-
     this.validateRawBalances(rawBalances);
+
+    const entries = Object.entries(rawBalances);
 
     // Get the total balance from all chains
     const total = entries.reduce((sum, [, balance]) => sum + balance, 0n);
