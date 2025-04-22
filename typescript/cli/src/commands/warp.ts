@@ -20,7 +20,7 @@ import {
 } from '../context/types.js';
 import { evaluateIfDryRunFailure } from '../deploy/dry-run.js';
 import { runWarpRouteApply, runWarpRouteDeploy } from '../deploy/warp.js';
-import { log, logBlue, logCommandHeader, logGreen } from '../logger.js';
+import { log, logBlue, logCommandHeader, logGreen, logRed } from '../logger.js';
 import { runWarpRouteRead } from '../read/warp.js';
 import {
   Executor,
@@ -441,47 +441,47 @@ export const rebalancer: CommandModuleWithContext<{
     checkFrequency,
     strategyConfigFile,
   }) => {
-    logCommandHeader('Hyperlane Warp Rebalancer');
+    try {
+      // Instantiates the warp route monitor
+      const monitor: IMonitor = new Monitor(
+        context.registry,
+        warpRouteId,
+        checkFrequency,
+      );
 
-    // Instantiates the warp route monitor
-    const monitor: IMonitor = new Monitor(
-      context.registry,
-      warpRouteId,
-      checkFrequency,
-    );
+      const strategyConfig = readYamlOrJson<StrategyConfig>(strategyConfigFile);
 
-    // Load the strategy config from disk
-    const strategyConfig = readYamlOrJson<StrategyConfig>(strategyConfigFile);
+      Object.values(strategyConfig).forEach((chainConfig) => {
+        chainConfig.tolerance = BigInt(chainConfig.tolerance);
+        chainConfig.weight = BigInt(chainConfig.weight);
+      });
 
-    // Convert tolerance and weight from strings to BigInt.
-    // This is necessary because bigints are not serializable so they would have been stored as strings
-    Object.values(strategyConfig).forEach((chainConfig) => {
-      chainConfig.tolerance = BigInt(chainConfig.tolerance);
-      chainConfig.weight = BigInt(chainConfig.weight);
-    });
+      // Instantiates the strategy that will get rebalancing routes based on monitor results
+      const strategy: IStrategy = new Strategy(strategyConfig);
 
-    // Instantiates the strategy that will get rebalancing routes based on monitor results
-    const strategy: IStrategy = new Strategy(strategyConfig);
+      // Instantiates the executor that will process rebalancing routes
+      const executor: IExecutor = new Executor();
 
-    // Instantiates the executor that will process rebalancing routes
-    const executor: IExecutor = new Executor();
+      // Observe monitor events and process rebalancing routes
+      monitor.subscribe((event) => {
+        const balances = event.balances.reduce((acc, next) => {
+          acc[next.chain] = next.value;
+          return acc;
+        }, {} as Record<ChainName, bigint>);
 
-    // Observe monitor events and process rebalancing routes
-    monitor.subscribe((event) => {
-      const balances = event.balances.reduce((acc, next) => {
-        acc[next.chain] = next.value;
-        return acc;
-      }, {} as Record<ChainName, bigint>);
+        const rebalancingRoutes = strategy.getRebalancingRoutes(balances);
 
-      const rebalancingRoutes = strategy.getRebalancingRoutes(balances);
+        executor.processRebalancingRoutes(rebalancingRoutes);
+      });
 
-      executor.processRebalancingRoutes(rebalancingRoutes);
-    });
+      // Starts the monitor to begin polling balances.
+      await monitor.start();
 
-    // Starts the monitor to begin polling balances.
-    await monitor.start();
-
-    logGreen('Rebalancer started successfully 🚀');
+      logGreen('Rebalancer started successfully 🚀');
+    } catch (e) {
+      logRed((e as Error).message);
+      process.exit(1);
+    }
   },
 };
 
