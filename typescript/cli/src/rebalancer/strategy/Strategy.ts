@@ -6,60 +6,35 @@ import {
   RebalancingRoute,
 } from '../interfaces/IStrategy.js';
 
-/**
- * Per chain configuration for the strategy
- */
-type Config = Record<
-  ChainName,
-  {
-    /**
-     * How much in % of the total balance the chain should have
-     */
-    weight: bigint;
-    /**
-     * How much in % of the target balance a deficitary chain can
-     * deviate before being considered unbalanced
-     */
-    tolerance: bigint;
-  }
->;
-
-/**
- * The amount of tokens that a chain deviates from the target balance
- */
-type Delta = { chain: ChainName; amount: bigint };
+import { Config, Delta } from './types.js';
 
 export class Strategy implements IStrategy {
+  private readonly chains: ChainName[];
+
   constructor(private readonly config: Config) {
-    this.validateConfig(config);
+    this.chains = Object.keys(this.config);
+    this.validateConfig();
   }
 
   /**
-   * Get the optimized routes that will rebalance all chains to the same balance
+   * Get the optimized routes to rebalance the defined chains
    */
   getRebalancingRoutes(rawBalances: RawBalances): RebalancingRoute[] {
     this.validateRawBalances(rawBalances);
 
-    const entries = Object.entries(rawBalances);
-
     // Get the total balance from all chains
-    const total = entries.reduce((sum, [, balance]) => sum + balance, 0n);
-
-    // How much each chain should have according to the weights
-    const targets = Object.entries(this.config).reduce(
-      (targets, [chain, { weight }]) => {
-        targets[chain] = (total * weight) / 100n;
-        return targets;
-      },
-      {} as Record<ChainName, bigint>,
+    const total = this.chains.reduce(
+      (sum, chain) => sum + rawBalances[chain],
+      0n,
     );
 
     // Group balances by balances with surplus or deficit
-    const { surpluss, deficits } = entries.reduce(
-      (acc, [chain, balance]) => {
-        const target = targets[chain];
-        const tolerance = this.config[chain].tolerance;
+    const { surpluss, deficits } = this.chains.reduce(
+      (acc, chain) => {
+        const { weight, tolerance } = this.config[chain];
+        const target = (total * weight) / 100n;
         const toleranceAmount = (target * tolerance) / 100n;
+        const balance = rawBalances[chain];
 
         // Apply the tolerance to deficits to prevent small imbalances
         if (balance < target - toleranceAmount) {
@@ -120,23 +95,22 @@ export class Strategy implements IStrategy {
     return routes;
   }
 
-  private validateConfig(config: Config): void {
-    const chains = Object.keys(config);
-
-    if (chains.length < 2) {
+  private validateConfig(): void {
+    // Rebalancing makes sense only with more than one chain.
+    if (this.chains.length < 2) {
       throw new Error('At least two chains must be configured');
     }
 
     let totalWeight = 0n;
 
-    for (const chain of chains) {
-      const { weight, tolerance } = config[chain];
+    for (const chain of this.chains) {
+      const { weight, tolerance } = this.config[chain];
 
-      if (weight > 100n || weight < 0n) {
+      if (weight < 0n || weight > 100n) {
         throw new Error('Weight must be between 0 and 100');
       }
 
-      if (tolerance > 100n || tolerance < 0n) {
+      if (tolerance < 0n || tolerance > 100n) {
         throw new Error('Tolerance must be between 0 and 100');
       }
 
@@ -149,14 +123,13 @@ export class Strategy implements IStrategy {
   }
 
   private validateRawBalances(rawBalances: RawBalances): void {
-    const configChains = Object.keys(this.config);
     const rawBalancesChains = Object.keys(rawBalances);
 
-    if (configChains.length !== rawBalancesChains.length) {
+    if (this.chains.length !== rawBalancesChains.length) {
       throw new Error('Config chains do not match raw balances chains length');
     }
 
-    for (const chain of configChains) {
+    for (const chain of this.chains) {
       const balance: bigint | undefined = rawBalances[chain];
 
       if (balance === undefined) {
