@@ -1,7 +1,5 @@
-import { expect } from 'chai';
 import { Wallet } from 'ethers';
 import { rmSync } from 'fs';
-import { ProcessPromise } from 'zx';
 import { $ } from 'zx';
 
 import { createWarpRouteConfigId } from '@hyperlane-xyz/registry';
@@ -44,12 +42,7 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   let warpDeploymentPath: string;
   let tokenSymbol: string;
   let warpRouteId: string;
-
-  let process: ProcessPromise | undefined;
-
   let snapshots: { rpcUrl: string; snapshotId: string }[] = [];
-
-  let logEmitted: boolean;
 
   before(async () => {
     const ogVerbose = $.verbose;
@@ -133,14 +126,10 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
   });
 
   beforeEach(async () => {
-    logEmitted = false;
-
     writeYamlOrJson(REBALANCER_STRATEGY_CONFIG_PATH, {
       [CHAIN_NAME_2]: { weight: '100', tolerance: '0' },
       [CHAIN_NAME_3]: { weight: '100', tolerance: '0' },
     });
-
-    process = undefined;
 
     const chain2Metadata: ChainMetadata = readYamlOrJson(CHAIN_2_METADATA_PATH);
     const chain3Metadata: ChainMetadata = readYamlOrJson(CHAIN_3_METADATA_PATH);
@@ -173,94 +162,66 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       // Ignore
     }
 
-    if (process) {
-      await process.kill();
-    }
-
     await Promise.all(
       snapshots.map(({ rpcUrl, snapshotId }) =>
         restoreSnapshot(rpcUrl, snapshotId),
       ),
     );
-
-    expect(logEmitted).to.equal(
-      true,
-      'Test finished before the log was emitted',
-    );
   });
 
-  async function waitForLog(process: ProcessPromise, log: string) {
-    for await (const chunk of process.stdout) {
-      if (chunk.includes(log)) {
-        logEmitted = true;
-        break;
-      }
-    }
-  }
-
-  it('should successfuly start the rebalancer', async () => {
-    process = hyperlaneWarpRebalancer(
+  async function startRebalancerAndExpectLog(log: string): Promise<void> {
+    const process = hyperlaneWarpRebalancer(
       warpRouteId,
       CHECK_FREQUENCY,
       REBALANCER_STRATEGY_CONFIG_PATH,
     );
 
-    await waitForLog(process, 'Rebalancer started successfully 🚀');
+    return new Promise(async (resolve, reject) => {
+      process.catch((e) => {
+        // TODO: Do a pretty print of the error
+        reject(e.text());
+      });
+
+      for await (const chunk of process.stdout) {
+        if (chunk.includes(log)) {
+          resolve();
+          await process.kill();
+          break;
+        }
+      }
+    });
+  }
+
+  it('should successfuly start the rebalancer', async () => {
+    await startRebalancerAndExpectLog('Rebalancer started successfully 🚀');
   });
 
   it('should throw when strategy config file does not exist', async () => {
     rmSync(REBALANCER_STRATEGY_CONFIG_PATH);
 
-    process = hyperlaneWarpRebalancer(
-      warpRouteId,
-      CHECK_FREQUENCY,
-      REBALANCER_STRATEGY_CONFIG_PATH,
-    );
-
-    await waitForLog(
-      process,
-      `File doesn't existavdasdvasdv at ${REBALANCER_STRATEGY_CONFIG_PATH}`,
+    await startRebalancerAndExpectLog(
+      `File doesn't exist at ${REBALANCER_STRATEGY_CONFIG_PATH}`,
     );
   });
 
   it('should throw if a strategy bigint cannot be parsed', async () => {
     writeYamlOrJson(REBALANCER_STRATEGY_CONFIG_PATH, {
-      [CHAIN_NAME_2]: { weight: 'weight', tolerance: '0' },
-      [CHAIN_NAME_3]: { weight: '100', tolerance: '0' },
+      [CHAIN_NAME_2]: { weight: 'weight', tolerance: 0 },
+      [CHAIN_NAME_3]: { weight: 100, tolerance: 0 },
     });
 
-    process = hyperlaneWarpRebalancer(
-      warpRouteId,
-      CHECK_FREQUENCY,
-      REBALANCER_STRATEGY_CONFIG_PATH,
-    );
-
-    await waitForLog(process, `Cannot convert weight to a BigInt`);
-
-    await process.kill();
+    await startRebalancerAndExpectLog(`Cannot convert weight to a BigInt`);
 
     writeYamlOrJson(REBALANCER_STRATEGY_CONFIG_PATH, {
-      [CHAIN_NAME_2]: { weight: '100', tolerance: '0' },
-      [CHAIN_NAME_3]: { weight: '100', tolerance: 'tolerance' },
+      [CHAIN_NAME_2]: { weight: 100, tolerance: 0 },
+      [CHAIN_NAME_3]: { weight: 100, tolerance: 'tolerance' },
     });
 
-    process = hyperlaneWarpRebalancer(
-      warpRouteId,
-      CHECK_FREQUENCY,
-      REBALANCER_STRATEGY_CONFIG_PATH,
-    );
-
-    await waitForLog(process, `Cannot convert tolerance to a BigInt`);
+    await startRebalancerAndExpectLog(`Cannot convert tolerance to a BigInt`);
   });
 
   it('should log that no routes are to be executed', async () => {
-    process = hyperlaneWarpRebalancer(
-      warpRouteId,
-      CHECK_FREQUENCY,
-      REBALANCER_STRATEGY_CONFIG_PATH,
-    );
-
-    await waitForLog(process, `Executing rebalancing routes: []`);
+    await startRebalancerAndExpectLog(`Executing rebalancing routes: []`);
   });
 
   it('should log that a single route is to be executed', async () => {
@@ -269,21 +230,12 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       [CHAIN_NAME_3]: { weight: '25', tolerance: '0' },
     });
 
-    process = hyperlaneWarpRebalancer(
-      warpRouteId,
-      CHECK_FREQUENCY,
-      REBALANCER_STRATEGY_CONFIG_PATH,
-    );
-
-    await waitForLog(
-      process,
-      `Executing rebalancing routes: [
+    await startRebalancerAndExpectLog(`Executing rebalancing routes: [
   {
     fromChain: 'anvil3',
     toChain: 'anvil2',
     amount: 50000000000000000000n
   }
-]`,
-    );
+]`);
   });
 });
