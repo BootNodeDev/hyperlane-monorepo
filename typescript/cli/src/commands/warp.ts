@@ -20,7 +20,13 @@ import {
 } from '../context/types.js';
 import { evaluateIfDryRunFailure } from '../deploy/dry-run.js';
 import { runWarpRouteApply, runWarpRouteDeploy } from '../deploy/warp.js';
-import { log, logBlue, logCommandHeader, logGreen, logRed } from '../logger.js';
+import {
+  errorRed,
+  log,
+  logBlue,
+  logCommandHeader,
+  logGreen,
+} from '../logger.js';
 import { runWarpRouteRead } from '../read/warp.js';
 import {
   Executor,
@@ -471,9 +477,8 @@ export const rebalancer: CommandModuleWithContext<{
 
       logGreen('Rebalancer started successfully 🚀');
     } catch (e) {
-      logRed((e as Error).message);
-      throw e;
-      // process.exit(1);
+      errorRed('Rebalancer could not be started:', (e as Error).message);
+      process.exit(1);
     }
   },
 };
