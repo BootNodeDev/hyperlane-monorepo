@@ -29,7 +29,6 @@ import {
   IStrategy,
   Monitor,
   Strategy,
-  StrategyConfig,
 } from '../rebalancer/index.js';
 import { sendTestTransfer } from '../send/transfer.js';
 import { runSingleChainSelectionStep } from '../utils/chains.js';
@@ -449,15 +448,8 @@ export const rebalancer: CommandModuleWithContext<{
         checkFrequency,
       );
 
-      const strategyConfig = readYamlOrJson<StrategyConfig>(strategyConfigFile);
-
-      Object.values(strategyConfig).forEach((chainConfig) => {
-        chainConfig.tolerance = BigInt(chainConfig.tolerance);
-        chainConfig.weight = BigInt(chainConfig.weight);
-      });
-
       // Instantiates the strategy that will get rebalancing routes based on monitor results
-      const strategy: IStrategy = new Strategy(strategyConfig);
+      const strategy: IStrategy = Strategy.fromConfigFile(strategyConfigFile);
 
       // Instantiates the executor that will process rebalancing routes
       const executor: IExecutor = new Executor();
@@ -480,7 +472,8 @@ export const rebalancer: CommandModuleWithContext<{
       logGreen('Rebalancer started successfully 🚀');
     } catch (e) {
       logRed((e as Error).message);
-      process.exit(1);
+      throw e;
+      // process.exit(1);
     }
   },
 };

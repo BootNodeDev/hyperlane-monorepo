@@ -1,5 +1,9 @@
+import { z } from 'zod';
+import { fromZodError } from 'zod-validation-error';
+
 import { ChainName } from '@hyperlane-xyz/sdk';
 
+import { readYamlOrJson } from '../../utils/files.js';
 import {
   IStrategy,
   RawBalances,
@@ -12,6 +16,35 @@ export class Strategy implements IStrategy {
   private readonly chains: ChainName[];
   private readonly config: StrategyConfig;
   private readonly totalWeight: bigint;
+
+  /**
+   * Create a new Strategy from a config file found at the given path.
+   */
+  static fromConfigFile(configPath: string): Strategy {
+    const ChainConfigSchema = z.object({
+      weight: z
+        .string()
+        .or(z.number())
+        .transform((val) => BigInt(val)),
+      tolerance: z
+        .string()
+        .or(z.number())
+        .transform((val) => BigInt(val)),
+    });
+
+    const StrategyConfigSchema = z.record(z.string(), ChainConfigSchema);
+
+    const config = readYamlOrJson(configPath);
+
+    const validationResult = StrategyConfigSchema.safeParse(config);
+
+    if (!validationResult.success) {
+      const validationError = fromZodError(validationResult.error);
+      throw new Error(validationError.message);
+    }
+
+    return new Strategy(validationResult.data);
+  }
 
   constructor(config: StrategyConfig) {
     const chains = Object.keys(config);
@@ -43,7 +76,7 @@ export class Strategy implements IStrategy {
   }
 
   /**
-   * Get the optimized routes to rebalance the defined chains
+   * Get the optimized routes to rebalance the defined chains.
    */
   getRebalancingRoutes(rawBalances: RawBalances): RebalancingRoute[] {
     this.validateRawBalances(rawBalances);
