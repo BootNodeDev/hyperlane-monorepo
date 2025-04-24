@@ -181,14 +181,15 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       const timeoutId = setTimeout(async () => {
-        await process.kill();
         reject(new Error(`Timeout waiting for log: "${log}"`));
+        void process.kill();
       }, timeout);
 
       process.catch((e) => {
         clearTimeout(timeoutId);
-        // TODO: Do a pretty print of the error
-        reject(e.text());
+        reject(
+          new Error(`Process failed before logging: "${log}" with error: ${e}`),
+        );
       });
 
       for await (let chunk of process.stdout) {
@@ -197,7 +198,7 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
         if (chunk.includes(log)) {
           clearTimeout(timeoutId);
           resolve();
-          await process.kill();
+          void process.kill();
           break;
         }
       }

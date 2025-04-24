@@ -20,7 +20,7 @@ import {
   WarpCoreConfig,
   WarpCoreConfigSchema,
 } from '@hyperlane-xyz/sdk';
-import { Address, assert, sleep } from '@hyperlane-xyz/utils';
+import { Address, sleep } from '@hyperlane-xyz/utils';
 
 import { getContext } from '../../context/context.js';
 import { CommandContext } from '../../context/types.js';
@@ -531,7 +531,10 @@ export async function restoreSnapshot(
   const result = await snapshotBaseCall<boolean>(rpcUrl, 'evm_revert', [
     snapshotId,
   ]);
-  assert(result, 'Failed to restore snapshot');
+
+  if (!result) {
+    throw new Error('Failed to restore snapshot');
+  }
 }
 
 async function snapshotBaseCall<T>(
