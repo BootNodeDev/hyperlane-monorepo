@@ -24,7 +24,10 @@ export class Monitor implements IMonitor {
     private readonly checkFrequency: number,
   ) {}
 
-  on(eventName: 'monitor' | 'start' | 'error', fn: (...args: any[]) => void) {
+  on(
+    eventName: 'collateralbalances' | 'start' | 'error',
+    fn: (...args: any[]) => void,
+  ) {
     this.emitter.on(eventName, fn);
     return this;
   }
@@ -77,7 +80,7 @@ export class Monitor implements IMonitor {
         }
 
         // Emit the event containing the collateral balances
-        this.emitter.emit('monitor', event);
+        this.emitter.emit('collateralbalances', event);
 
         // Wait for the specified check frequency before the next iteration
         await sleep(this.checkFrequency);

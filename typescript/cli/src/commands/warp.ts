@@ -460,9 +460,9 @@ export const rebalancer: CommandModuleWithContext<{
       // Instantiates the executor that will process rebalancing routes
       const executor: IExecutor = new Executor();
 
-      monitor
-        // Observe monitor events and process rebalancing routes
-        .on('monitor', (event) => {
+      await monitor
+        // Observe balances events and process rebalancing routes
+        .on('collateralbalances', (event) => {
           const balances = event.balances.reduce((acc, next) => {
             acc[next.chain] = next.value;
             return acc;
