@@ -191,7 +191,9 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
         reject(e.text());
       });
 
-      for await (const chunk of process.stdout) {
+      for await (let chunk of process.stdout) {
+        chunk = typeof chunk === 'string' ? chunk : chunk.toString();
+
         if (chunk.includes(log)) {
           clearTimeout(timeoutId);
           resolve();
