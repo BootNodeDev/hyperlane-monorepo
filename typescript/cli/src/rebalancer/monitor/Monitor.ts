@@ -36,6 +36,7 @@ export class Monitor implements IMonitor {
     if (this.isMonitorRunning) {
       // Cannot start the same monitor multiple times
       this.emitter.emit('error', new Error('Monitor already running'));
+      return;
     }
 
     try {
