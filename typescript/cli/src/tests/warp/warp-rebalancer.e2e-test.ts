@@ -235,7 +235,7 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       [CHAIN_NAME_3]: { weight: 100, tolerance: 'tolerance' },
     });
 
-    await startRebalancerAndExpectLog(`Cannot convert tolerancia to a BigInt`);
+    await startRebalancerAndExpectLog(`Cannot convert tolerance to a BigInt`);
   });
 
   it('should log that no routes are to be executed', async () => {
