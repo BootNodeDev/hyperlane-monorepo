@@ -34,6 +34,7 @@ import {
   IMonitor,
   IStrategy,
   Monitor,
+  MonitorRunError,
   Strategy,
 } from '../rebalancer/index.js';
 import { sendTestTransfer } from '../send/transfer.js';
@@ -478,9 +479,12 @@ export const rebalancer: CommandModuleWithContext<{
         })
         // Observe monitor errors and exit
         .on('error', (e) => {
-          throw new Error(
-            `Something went wrong with the monitor: ${e.message}`,
-          );
+          if (e instanceof MonitorRunError) {
+            errorRed(e);
+          } else {
+            // This will catch `MonitorStartError` and generic errors
+            throw e;
+          }
         })
         // Observe monitor start and log success
         .on('start', () => {

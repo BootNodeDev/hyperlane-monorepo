@@ -6,6 +6,26 @@ import { objMap, objMerge, sleep } from '@hyperlane-xyz/utils';
 
 import { IMonitor, MonitorEvent } from '../interfaces/IMonitor.js';
 
+class WrappedError extends Error {
+  constructor(message: string, originalError?: Error) {
+    super(message);
+    this.name = 'WrappedError';
+
+    // Preserve the stack trace of the original error if available
+    if (originalError?.stack) {
+      this.stack = `${this.stack}\nCaused by: ${originalError.stack}`;
+    }
+  }
+}
+
+export class MonitorStartError extends WrappedError {
+  name = 'MonitorStartError';
+}
+
+export class MonitorRunError extends WrappedError {
+  name = 'MonitorRunError';
+}
+
 /**
  * Simple monitor implementation that polls warp route collateral balances and emits them as MonitorEvent.
  */
@@ -35,7 +55,10 @@ export class Monitor implements IMonitor {
   async start() {
     if (this.isMonitorRunning) {
       // Cannot start the same monitor multiple times
-      this.emitter.emit('error', new Error('Monitor already running'));
+      this.emitter.emit(
+        'error',
+        new MonitorStartError('Monitor already running'),
+      );
       return;
     }
 
@@ -57,37 +80,53 @@ export class Monitor implements IMonitor {
       this.emitter.emit('start');
 
       while (this.isMonitorRunning) {
-        const event: MonitorEvent = {
-          balances: [],
-        };
+        try {
+          const event: MonitorEvent = {
+            balances: [],
+          };
 
-        for (const token of warpCore.tokens) {
-          // Ignore non-collateralized tokens given that we only care about collateral balances
-          if (!token.isCollateralized()) {
-            continue;
+          for (const token of warpCore.tokens) {
+            // Ignore non-collateralized tokens given that we only care about collateral balances
+            if (!token.isCollateralized()) {
+              continue;
+            }
+
+            const adapter = token.getHypAdapter(warpCore.multiProvider);
+
+            // Get the bridged supply of the collateral token to obtain how much collateral is available
+            const bridgedSupply = await adapter.getBridgedSupply();
+
+            event.balances.push({
+              chain: token.chainName,
+              owner: token.addressOrDenom,
+              token: token.collateralAddressOrDenom!,
+              value: bridgedSupply!,
+            });
           }
 
-          const adapter = token.getHypAdapter(warpCore.multiProvider);
-
-          // Get the bridged supply of the collateral token to obtain how much collateral is available
-          const bridgedSupply = await adapter.getBridgedSupply();
-
-          event.balances.push({
-            chain: token.chainName,
-            owner: token.addressOrDenom,
-            token: token.collateralAddressOrDenom!,
-            value: bridgedSupply!,
-          });
+          // Emit the event containing the collateral balances
+          this.emitter.emit('collateralbalances', event);
+        } catch (e) {
+          this.emitter.emit(
+            'error',
+            new MonitorRunError(
+              `Error during monitor execution cycle: ${(e as Error).message}`,
+              e as Error,
+            ),
+          );
         }
-
-        // Emit the event containing the collateral balances
-        this.emitter.emit('collateralbalances', event);
 
         // Wait for the specified check frequency before the next iteration
         await sleep(this.checkFrequency);
       }
     } catch (e) {
-      this.emitter.emit('error', e);
+      this.emitter.emit(
+        'error',
+        new MonitorStartError(
+          `Error starting monitor: ${(e as Error).message}`,
+          e as Error,
+        ),
+      );
     }
   }
 
