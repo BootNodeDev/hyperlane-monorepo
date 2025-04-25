@@ -4,19 +4,8 @@ import { IRegistry } from '@hyperlane-xyz/registry';
 import { MultiProtocolProvider, WarpCore } from '@hyperlane-xyz/sdk';
 import { objMap, objMerge, sleep } from '@hyperlane-xyz/utils';
 
+import { WrappedError } from '../../utils/errors.js';
 import { IMonitor, MonitorEvent } from '../interfaces/IMonitor.js';
-
-class WrappedError extends Error {
-  constructor(message: string, originalError?: Error) {
-    super(message);
-    this.name = 'WrappedError';
-
-    // Preserve the stack trace of the original error if available
-    if (originalError?.stack) {
-      this.stack = `${this.stack}\nCaused by: ${originalError.stack}`;
-    }
-  }
-}
 
 export class MonitorStartError extends WrappedError {
   name = 'MonitorStartError';
