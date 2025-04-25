@@ -446,14 +446,14 @@ export const rebalancer: CommandModuleWithContext<{
     checkFrequency,
     strategyConfigFile,
   }) => {
-    // Instantiates the warp route monitor
-    const monitor: IMonitor = new Monitor(
-      context.registry,
-      warpRouteId,
-      checkFrequency,
-    );
-
     try {
+      // Instantiates the warp route monitor
+      const monitor: IMonitor = new Monitor(
+        context.registry,
+        warpRouteId,
+        checkFrequency,
+      );
+
       // Instantiates the strategy that will get rebalancing routes based on monitor results
       const strategy: IStrategy = Strategy.fromConfigFile(strategyConfigFile);
 
