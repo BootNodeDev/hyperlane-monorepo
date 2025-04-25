@@ -22,8 +22,8 @@ export class MonitorStartError extends WrappedError {
   name = 'MonitorStartError';
 }
 
-export class MonitorRunError extends WrappedError {
-  name = 'MonitorRunError';
+export class MonitorPollingError extends WrappedError {
+  name = 'MonitorPollingError';
 }
 
 /**
@@ -109,7 +109,7 @@ export class Monitor implements IMonitor {
         } catch (e) {
           this.emitter.emit(
             'error',
-            new MonitorRunError(
+            new MonitorPollingError(
               `Error during monitor execution cycle: ${(e as Error).message}`,
               e as Error,
             ),

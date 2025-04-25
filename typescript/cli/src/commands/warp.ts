@@ -34,7 +34,7 @@ import {
   IMonitor,
   IStrategy,
   Monitor,
-  MonitorRunError,
+  MonitorPollingError,
   Strategy,
 } from '../rebalancer/index.js';
 import { sendTestTransfer } from '../send/transfer.js';
@@ -479,7 +479,7 @@ export const rebalancer: CommandModuleWithContext<{
         })
         // Observe monitor errors and exit
         .on('error', (e) => {
-          if (e instanceof MonitorRunError) {
+          if (e instanceof MonitorPollingError) {
             errorRed(e);
           } else {
             // This will catch `MonitorStartError` and generic errors
