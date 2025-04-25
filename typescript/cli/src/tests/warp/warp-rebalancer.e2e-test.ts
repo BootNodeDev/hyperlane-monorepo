@@ -168,27 +168,29 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
     );
   });
 
-  function startRebalancerAndExpectLog(
-    log: string,
-    timeout = 10000,
-  ): Promise<void> {
+  async function startRebalancerAndExpectLog(log: string, timeout = 10000) {
     const process = hyperlaneWarpRebalancer(
       warpRouteId,
       CHECK_FREQUENCY,
       REBALANCER_STRATEGY_CONFIG_PATH,
     );
 
+    let timeoutId: NodeJS.Timeout;
+
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
-      const timeoutId = setTimeout(async () => {
+      timeoutId = setTimeout(async () => {
         reject(new Error(`Timeout waiting for log: "${log}"`));
-        void process.kill();
       }, timeout);
 
       process.catch((e) => {
-        clearTimeout(timeoutId);
+        const lines = e.lines();
+        const error = lines[lines.length - 1];
+
         reject(
-          new Error(`Process failed before logging: "${log}" with error: ${e}`),
+          new Error(
+            `Process failed before logging: "${log}" with error: ${error}`,
+          ),
         );
       });
 
@@ -196,12 +198,13 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
         chunk = typeof chunk === 'string' ? chunk : chunk.toString();
 
         if (chunk.includes(log)) {
-          clearTimeout(timeoutId);
-          resolve();
-          void process.kill();
+          resolve(void 0);
           break;
         }
       }
+    }).finally(() => {
+      clearTimeout(timeoutId);
+      void process.kill();
     });
   }
 
@@ -232,7 +235,7 @@ describe('hyperlane warp rebalancer e2e tests', async function () {
       [CHAIN_NAME_3]: { weight: 100, tolerance: 'tolerance' },
     });
 
-    await startRebalancerAndExpectLog(`Cannot convert tolerance to a BigInt`);
+    await startRebalancerAndExpectLog(`Cannot convert tolerancia to a BigInt`);
   });
 
   it('should log that no routes are to be executed', async () => {
